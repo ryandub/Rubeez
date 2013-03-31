@@ -1,5 +1,6 @@
 require 'rubeez'
 require 'rubeez/swarm'
+require 'rubeez/log'
 require 'mixlib/cli'
 
 class Rubeez::Application
@@ -29,12 +30,24 @@ class Rubeez::Application
     :default => "600",
     :description => "Duration of test in seconds"
 
+  option :region,
+    :short => "-r REGION",
+    :long => "--region REGION",
+    :default => "ord",
+    :description => "Region to deploy into (dfw, ord, lon)"
+
+  option :status,
+    :short => "-s",
+    :long => "--status",
+    :description => "Show swarm status"
+
   def initialize
     super
   end
 
   def run
     configure_rubeez
+    configure_logging
     run_application
   end
 
@@ -43,8 +56,17 @@ class Rubeez::Application
     Rubeez::Config.merge!(config)
   end
 
+  def configure_logging
+    Rubeez::Log.init(Rubeez::Config[:log_location])
+    Rubeez::Log.level = Rubeez::Config[:log_level]
+  end
+
   def run_application
     rubeez = Rubeez::Swarm.new
+    if Rubeez::Config[:status]
+      rubeez.status
+      exit 0
+    end
     rubeez.swarm
   end
 

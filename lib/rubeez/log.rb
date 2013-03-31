@@ -1,4 +1,5 @@
 require 'rubeez/config'
+require 'rubeez/log'
 require 'mixlib/log'
 
 module Rubeez

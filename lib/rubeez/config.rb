@@ -6,6 +6,7 @@ module Rubeez
 
     log_level :debug
     log_location STDOUT
+    region :ord
     rubeez_file File.expand_path('~/.rubeez')
   end
 end

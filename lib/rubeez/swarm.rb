@@ -11,11 +11,23 @@ module Rubeez
       super
     end
 
+    def check_swarm_exists?
+      if ((File.size?(Rubeez::Config[:rubeez_file]) > 0) rescue false)
+        Rubeez::Log.info("Swarm already exists. Run 'rubeez kill' to delete servers and start new swarm.")
+	      exit
+      end
+    end
+
+    def clear_file(file)
+      File.open(file, 'w') {}
+    end
+
     def create_connection
       connection = Fog::Compute.new({
         :provider           => 'Rackspace',
         :rackspace_username => Rubeez::Config[:username],
         :rackspace_api_key  => Rubeez::Config[:apikey],
+#        :rackspace_region   => Rubeez::Config[:region],
         :version => :v2
       })
       return connection
@@ -54,6 +66,7 @@ module Rubeez
     def create_swarm
       beez = []
       threads = []
+      check_swarm_exists?
       connection = create_connection
       create_keys
       Rubeez::Log.info("Populating hive - this may take some time")
@@ -71,6 +84,16 @@ module Rubeez
       Rubeez::Log.info("Swarm Created: #{beez.each {|bee| print bee.name + "\n"}}")
     end
 
+    def kill_swarm
+      connection = create_connection
+      beez = read_file(Rubeez::Config[:rubeez_file])
+      connection = create_connection
+      Rubeez::Log.info("Killing hive...")
+      beez.each do |bee|
+        Rubeez::Log.info("#{connection.servers.delete(bee)}")
+      end      
+    end
+
     def read_file(file)
       contents = Array.new
       f = File.open(File.expand_path(file))
@@ -83,12 +106,16 @@ module Rubeez
     end
 
     def status
-      beez = read_file(Rubeez::Config[:rubeez_file])
+      beez = IO.readlines Rubeez::Config[:rubeez_file]
+      connection = create_connection
+      beez.each do |id|
+        bee = connection.servers.get(id.strip)
+        Rubeez::Log.info("#{bee.name}: #{bee.state} - #{bee.progress}")
+      end             
     end
 
     def write_file(file, data)
       File.open(File.expand_path(file), 'a') {|f| f.write(data + "\n") }
     end
-
   end
 end
