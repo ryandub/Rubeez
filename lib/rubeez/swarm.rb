@@ -33,6 +33,7 @@ module Rubeez
         t.join
       end
       results = gather_reports
+      Rubeez::Log.info("Results averaged across the entire swarm:")
       print_results(results)
       clean_up
     end
@@ -57,7 +58,7 @@ module Rubeez
     def check_url
       uri = URI(Rubeez::Config[:url])
       if not uri.scheme
-        uri = "http://" + Rubeez::Config[:url]
+        uri = URI("http://" + Rubeez::Config[:url])
       end
       uri.path = "/" if uri.path.empty?
       Rubeez::Config[:url] = uri.to_s
@@ -134,7 +135,7 @@ module Rubeez
       end
       connection = create_connection
       create_keys
-      Rubeez::Log.info("Populating hive - this may take some time")
+      Rubeez::Log.info("Populating swarm - this may take some time")
       Rubeez::Log.info("-----------------------------------------")
       Rubeez::Config[:beez].to_i.times do |i|
     	Rubeez::Log.info("Creating bee ##{i}")
@@ -147,7 +148,7 @@ module Rubeez
         t.join
       end
       Rubeez::Log.info("Swarm Created:")
-      beez.each {|bee| Rubeez::Log.info("#{bee.name}: #{bee.state}")}
+      beez.each {|bee| Rubeez::Log.info("#{bee.name}: #{bee.id}")}
       Rubeez::Log.info("Use 'rubeez -s' to check status.")
     end
 
@@ -236,7 +237,7 @@ module Rubeez
       results.drop(1).each do |row|
         table << { "percentage_served" => row[0], "time_in_ms" => row[1] }
       end
-      Rubeez::Log.info("#{table.to_text}")
+      Rubeez::Log.info("\n#{table.to_text}")
     end
 
     def read_file(file)
@@ -259,7 +260,7 @@ module Rubeez
         Rubeez::Log.info("#{bee.name}: #{bee.state} - #{bee.progress}")
       end
       unless status.include?("BUILD") or status.include?("ERROR")
-        Rubeez::Log.info("All beez ready! Swarm is complete. Run 'rubeez --attack [TARGET]'")
+        Rubeez::Log.info("All beez ready! Swarm is complete. Run 'rubeez --attack --url [TARGET]'")
       else
         Rubeez::Log.info("Swarm still forming. #{status.count {|x| x == 'ACTIVE'}} out of #{status.count} complete.")
       end
