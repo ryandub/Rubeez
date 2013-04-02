@@ -24,12 +24,6 @@ class Rubeez::Application
     :default => "5",
     :description => "Number of beez (servers) to create"
 
-  option :time,
-    :short => "-t SECONDS",
-    :long => "--time SECONDS",
-    :default => "600",
-    :description => "Duration of test in seconds"
-
   option :region,
     :short => "-r REGION",
     :long => "--region REGION",
@@ -51,8 +45,20 @@ class Rubeez::Application
 
   option :url,
     :long => "--url [URL]",
-    :default => "http://127.0.0.1/",
     :description => "URL to attack"
+
+  option :requests,
+    :long => "--requests [REQUESTS]",
+    :short => "-q [REQUESTS]"
+    :description => "Number of requests each bee will make."
+    :default => "100"
+
+  option :concurrency,
+    :long => "--concurrency [CONCURRENCY]"
+    :short => "-c [CONCURRENCY]"
+    :description => "Number of concurrent connections each bee will use."
+    :default => "10"
+
 
   def initialize
     super
@@ -85,8 +91,12 @@ class Rubeez::Application
       exit 0
     end
     if Rubeez::Config[:attack]
-      rubeez.attack
-      exit 0
+      if Rubeez::Config[:url]
+        rubeez.attack
+        exit 0
+      else
+        Rubeez::Log.info("No url specified. Use --url [URL]")
+      end
     end
     rubeez.swarm
   end

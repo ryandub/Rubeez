@@ -39,7 +39,7 @@ module Rubeez
 
     def attack_command
       get_headers
-      cmd = "ab -e /tmp/rubeez.out -r -n #{Rubeez::Config[:num_requests]} -c #{Rubeez::Config[:concurrent_requests]} -C 'sessionid=SomeSessionID' #{Rubeez::Config[:header_string]} '#{Rubeez::Config[:url]}'"
+      cmd = "ab -e /tmp/rubeez.out -r -n #{Rubeez::Config[:requests]} -c #{Rubeez::Config[:concurrency]} -C 'sessionid=SomeSessionID' #{Rubeez::Config[:header_string]} '#{Rubeez::Config[:url]}'"
       Rubeez::Log.info("Attacking #{Rubeez::Config[:url]} with the following command:")
       Rubeez::Log.info("#{cmd}")
       Rubeez::Log.info("If this is your first attack with this swarm, it may take a few minutes before starting")
