@@ -3,6 +3,7 @@ Rubeez
 
 Ruby utility for creating Rackspace Cloud Servers and using them to generate HTTP traffic to a specified host. Based on the idea from [Bees With Machine Guns](https://github.com/newsapps/beeswithmachineguns).
 
+This is still very much a work-in-progress, so expect some rough edges and terrible error handling.
 
 ## Installation
 ### Vagrant
