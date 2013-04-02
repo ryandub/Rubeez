@@ -41,6 +41,19 @@ class Rubeez::Application
     :long => "--status",
     :description => "Show swarm status"
 
+  option :kill,
+    :long => "--kill",
+    :description => "Kill the entire swarm"
+
+  option :attack,
+    :long => "--attack",
+    :description => "Attack URL designated by --url"
+
+  option :url,
+    :long => "--url [URL]",
+    :default => "http://127.0.0.1/",
+    :description => "URL to attack"
+
   def initialize
     super
   end
@@ -67,7 +80,14 @@ class Rubeez::Application
       rubeez.status
       exit 0
     end
+    if Rubeez::Config[:kill]
+      rubeez.kill_swarm
+      exit 0
+    end
+    if Rubeez::Config[:attack]
+      rubeez.attack
+      exit 0
+    end
     rubeez.swarm
   end
-
 end
