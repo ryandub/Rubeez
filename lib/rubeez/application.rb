@@ -49,14 +49,14 @@ class Rubeez::Application
 
   option :requests,
     :long => "--requests [REQUESTS]",
-    :short => "-q [REQUESTS]"
-    :description => "Number of requests each bee will make."
+    :short => "-q [REQUESTS]",
+    :description => "Number of requests each bee will make.",
     :default => "100"
 
   option :concurrency,
-    :long => "--concurrency [CONCURRENCY]"
-    :short => "-c [CONCURRENCY]"
-    :description => "Number of concurrent connections each bee will use."
+    :long => "--concurrency [CONCURRENCY]",
+    :short => "-c [CONCURRENCY]",
+    :description => "Number of concurrent connections each bee will use.",
     :default => "10"
 
 
