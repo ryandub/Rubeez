@@ -5,6 +5,10 @@ Ruby utility for creating Rackspace Cloud Servers and using them to generate HTT
 
 This is still very much a work-in-progress, so expect some rough edges and terrible error handling.
 
+### Known Issues
+* Currently Rubeez only deploys to the DFW region regardless of the ```-r``` or ```--region``` flag.
+* Managed Cloud accounts may encounter issues attacking if the attack command is issued too soon after the servers are online as Rubeez may conflict with server automation. It is recommended at this time to use a non-Managed account.
+
 ## Installation
 ### Vagrant
 The easiest way to start using ```Rubeez``` is by using [vagrant](http://docs.vagrantup.com/v2/getting-started/index.html). From the Rubeez repository, type ```vagrant up```. Once the VM is finished booting, type ```vagrant ssh``` to login to the VM. From there, follow the usage instructions to start using ```Rubeez```.
