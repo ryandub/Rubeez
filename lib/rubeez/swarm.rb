@@ -28,6 +28,8 @@ require 'net/ssh'
 require 'ruport'
 require 'csv'
 require 'fog'
+require 'nokogiri'
+require 'open-uri'
 
 module Rubeez
   class Swarm
@@ -62,8 +64,12 @@ module Rubeez
     end
 
     def attack_command
+      check_url
       get_headers
-      cmd = "ab -e /tmp/rubeez.out -r -n #{Rubeez::Config[:requests]} -c #{Rubeez::Config[:concurrency]} -C 'sessionid=SomeSessionID' #{Rubeez::Config[:header_string]} '#{Rubeez::Config[:url]}'"
+      urls = generate_content_urls
+      cmd = "echo -e \"#{generate_content_urls}\" >> /tmp/urls.txt;"
+      #cmd << "ab -e /tmp/rubeez.out -r -n #{Rubeez::Config[:requests]} -c #{Rubeez::Config[:concurrency]} -C 'sessionid=SomeSessionID' #{Rubeez::Config[:header_string]} '#{Rubeez::Config[:url]}'"
+      cmd << "siege -r #{Rubeez::Config[:requests]} -c #{Rubeez::Config[:concurrency]} -f /tmp/urls.txt -l /tmp/rubeez.out"
       Rubeez::Log.info("Attacking #{Rubeez::Config[:url]} with the following command:")
       Rubeez::Log.info("#{cmd}")
       Rubeez::Log.info("If this is your first attack with this swarm, it may take a few minutes before starting")
@@ -141,12 +147,26 @@ module Rubeez
                               },
                               {
                                 :path => '/tmp/rubeez_prepare.sh',
-                                :contents => Base64.encode64("#! /bin/bash\nif [ ! -f /tmp/rubeez_ready ]; then\napt-get update\napt-get install -y apache2-utils\ntouch /tmp/rubeez_ready\nfi")
-                              }]
+                                :contents => Base64.encode64("#! /bin/bash\nif [ ! -f /tmp/rubeez_ready ]; then\napt-get update\napt-get install -y apache2-utils\napt-get install -y siege\ntouch /tmp/rubeez_ready\nfi")
+                              },
+                             ]
               )
       Rubeez::Log.info("Adding #{bee.name} to the swarm.")
       write_file(Rubeez::Config[:rubeez_file], bee.id)
       return bee
+    end
+
+    def generate_content_urls
+      doc = Nokogiri::HTML(open("#{Rubeez::Config[:url]}"))
+      urls = ''
+      urls = "#{Rubeez::Config[:url]}\n"
+      doc.xpath("//img/@src").each do |script|
+        urls << script << "\n"
+      end
+      doc.xpath("//script/@src").each do |script|
+        urls << script << "\n"
+      end
+      return urls
     end
 
     def create_swarm
