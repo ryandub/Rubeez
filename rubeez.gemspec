@@ -18,6 +18,7 @@ spec = Gem::Specification.new do |s|
   s.add_dependency "mixlib-log"
   s.add_dependency "fog"
   s.add_dependency "ruport"
+  s.add_dependency "nokogiri"
 
   s.bindir = "bin"
   s.executables = %w(rubeez)
