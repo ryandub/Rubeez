@@ -25,9 +25,12 @@ require 'rubeez'
 require 'rubeez/application'
 require 'rubeez/log'
 require 'net/ssh'
+require 'net/scp'
 require 'ruport'
 require 'csv'
 require 'fog'
+require 'nokogiri'
+require 'open-uri'
 
 module Rubeez
   class Swarm
@@ -62,10 +65,12 @@ module Rubeez
     end
 
     def attack_command
+      check_url
       get_headers
-      cmd = "ab -e /tmp/rubeez.out -r -n #{Rubeez::Config[:requests]} -c #{Rubeez::Config[:concurrency]} -C 'sessionid=SomeSessionID' #{Rubeez::Config[:header_string]} '#{Rubeez::Config[:url]}'"
-      Rubeez::Log.info("Attacking #{Rubeez::Config[:url]} with the following command:")
-      Rubeez::Log.info("#{cmd}")
+      urls = generate_content_urls
+      cmd = "echo -e \"#{generate_content_urls}\" >> /tmp/urls.txt;"
+      cmd << "siege -r #{Rubeez::Config[:requests]} -c #{Rubeez::Config[:concurrency]} --log=/tmp/rubeez.out -f /tmp/urls.txt"
+      Rubeez::Log.info("Attacking #{Rubeez::Config[:url]}...")
       Rubeez::Log.info("If this is your first attack with this swarm, it may take a few minutes before starting")
       return cmd
     end
@@ -141,12 +146,26 @@ module Rubeez
                               },
                               {
                                 :path => '/tmp/rubeez_prepare.sh',
-                                :contents => Base64.encode64("#! /bin/bash\nif [ ! -f /tmp/rubeez_ready ]; then\napt-get update\napt-get install -y apache2-utils\ntouch /tmp/rubeez_ready\nfi")
-                              }]
+                                :contents => Base64.encode64("#! /bin/bash\nif [ ! -f /tmp/rubeez_ready ]; then\napt-get update\napt-get install -y apache2-utils\napt-get install -y siege\ntouch /tmp/rubeez_ready\nfi")
+                              },
+                             ]
               )
       Rubeez::Log.info("Adding #{bee.name} to the swarm.")
       write_file(Rubeez::Config[:rubeez_file], bee.id)
       return bee
+    end
+
+    def generate_content_urls
+      doc = Nokogiri::HTML(open("#{Rubeez::Config[:url]}"))
+      urls = ''
+      urls = "#{Rubeez::Config[:url]}\n"
+      doc.xpath("//img/@src").each do |script|
+        urls << script << "\n"
+      end
+      doc.xpath("//script/@src").each do |script|
+        urls << script << "\n"
+      end
+      return urls
     end
 
     def create_swarm
@@ -182,44 +201,58 @@ module Rubeez
       beez.count.times do |i|
         threads[i] = Thread.new do
                        server = connection.servers.get(beez[i])
-                       Fog::SCP.new(server.ipv4_address, 'root', 
-                                    {:key_data => Rubeez::Config[:private_key_data].to_s}).download(
-                                    '/tmp/rubeez.out', "/tmp/#{beez[i]}.out", {})
+                       Net::SCP.download!(server.ipv4_address, 'root',
+                         '/tmp/rubeez.out', "/tmp/#{beez[i]}.out",
+                         :ssh => { 
+			   :keys => File.expand_path(Rubeez::Config[:private_key])
+			 })
                      end
       end
       threads.each do |t|
         t.join
       end
       files = beez.map {|x| "/tmp/#{x}.out"}
-      data = Array.new
+      data = Hash.new(0)
       files.each do |file|
-        data << CSV.read(file)
-      end
-      average = data[0]
-      data[0].count.times do |j|
-        unless data[0][j][0].include?('Percentage')
-          c = Array.new
-          data.each do |file|
-            unless c[j].nil?
-              c[j] << file[j][1]
-            else
-              c[j] = *file[j][1]
-            end
+        f = File.open(file).readlines
+        f.each do |readline|
+          if readline[f.last]
+            csv_data = CSV.parse(readline)
+            data["count"] += 1 
+            data["elap_time"] += csv_data[0][2].to_f
+            data["resp_time"] += csv_data[0][4].to_f
+            data["trans_rate"] += csv_data[0][5].to_f
+            data["concurrent"] += csv_data[0][7].to_f
+            data["okay"] += csv_data[0][8].to_f
+            data["failed"] += csv_data[0][9].to_f
           end
-          average[j][1] = c[j]
         end
       end
+      #average = data[0]
+      #data[0].count.times do |j|
+      #  unless data[0][j][0].include?('Percentage')
+      #    c = Array.new
+      #    data.each do |file|
+      #      unless c[j].nil?
+      #        c[j] << file[j][1]
+      #      else
+      #        c[j] = *file[j][1]
+      #      end
+      #    end
+      #    average[j][1] = c[j]
+      #  end
+      #end
 
-      average.count.times do |i|
-        unless average[i][0].include?('Percentage')
-          average[i][1].count.times do |j|
-            average[i][1][j] = average[i][1][j].to_f
-          end
-          average[i][1] = average[i][1].instance_eval { reduce(:+) / size.to_f }.round(4)
-        end
-      end
+      #average.count.times do |i|
+      #  unless average[i][0].include?('Percentage')
+      #    average[i][1].count.times do |j|
+      #      average[i][1][j] = average[i][1][j].to_f
+      #    end
+      #    average[i][1] = average[i][1].instance_eval { reduce(:+) / size.to_f }.round(4)
+      #  end
+      #end
 
-      return average
+      return data
     end
 
     def get_headers
@@ -256,9 +289,10 @@ module Rubeez
     end
 
     def print_results(results)
-      table = Table(%w[percentage_served time_in_ms])
+      table = Table(%w[stats average])
+      Rubeez::Log.info(results['count'])
       results.drop(1).each do |row|
-        table << { "percentage_served" => row[0], "time_in_ms" => row[1] }
+	table << [ row[0], (row[1].to_f / results['count'].to_f).to_s[0..4]]
       end
       Rubeez::Log.info("\n#{table.to_text}")
     end
